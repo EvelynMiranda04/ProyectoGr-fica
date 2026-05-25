@@ -1,0 +1,20 @@
+﻿  01PRINCIPAL.cpp
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\Window.h(12,36): warning C4244: 'return': conversión de 'GLint' a 'GLfloat'; posible pérdida de datos
+  (compilando archivo de origen "01PRINCIPAL.cpp")
+  
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\Window.h(13,37): warning C4244: 'return': conversión de 'GLint' a 'GLfloat'; posible pérdida de datos
+  (compilando archivo de origen "01PRINCIPAL.cpp")
+  
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(457,24): warning C4267: 'inicializando': conversión de 'size_t' a 'unsigned int'; posible pérdida de datos
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(993,24): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(997,20): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(999,33): warning C4244: '+=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(1310,34): warning C4244: '=': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(1347,21): warning C4244: '+=': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\ProyectoV1\01PRINCIPAL.cpp(1519,48): warning C4244: '=': conversión de 'double' a 'float'; posible pérdida de datos
+  Generando código
+  257 of 1395 functions (18.4%) were compiled, the rest were copied from previous compilation.
+    3 functions were new in current compilation
+    24 functions had inline decision re-evaluated but remain unchanged
+  Generación de código finalizada
+  ProyectoV1.vcxproj -> C:\Users\Birds\OneDrive\Escritorio\LAB_CG\PROYECTO\V1\ProyectoV1\x64\Release\ProyectoV1.exe

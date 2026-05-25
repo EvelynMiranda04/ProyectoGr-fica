@@ -19,6 +19,11 @@
 #include <glm.hpp>
 #include <gtc\matrix_transform.hpp>
 #include <gtc\type_ptr.hpp>
+//Sonido
+#include <irrKlang.h>
+using namespace irrklang;
+ISoundEngine* SoundEngine = createIrrKlangDevice();
+
 
 // ====================================================================================
 // 2. CLASES DEL MOTOR
@@ -57,11 +62,10 @@ float tiempoAnimacion = 0.0f;
 float velocidadAnimacion = 0.15f;
 float rotacionAvatar = 0.0f;
 float amplitudArticulacion = 35.0f;
-// Variables de movimiento para el recorrido
 float distanciaRecorrida = 0.0f;
 float cuerpoPosX = 120.0f;
 float cuerpoPosZ = -30.0f;
-float cuerpoRotY = 0.0f; // Empezamos en 0 porque las piezas ya tienen el 180 interno
+float cuerpoRotY = 0.0f; // Empezamos en 0 (piezas 180 interno)
 bool estaMoviendo = true;
 float cronometroEspera = 0.0f;
 float velocidadTrayecto = 0.10f;
@@ -198,30 +202,102 @@ float movEsferaX = 0.0f;
 float movEsferaZ = 0.0f;
 float rotEsferaY = 0.0f;
 float rotEsferaZ = 0.0f;
-float tiempoSerpenteo = 0.0f;
 float velocidadAvance = 0.2f;
 float puntoDestinoX = 435.0f;
-bool arbolCae = false;
 float anguloCaida = 80.0f;
 float rotArbol = 0.0f;
 float velocidadCaida;
+bool arbol_cayendo = false;
+
 
 // ==========================================
-// 3.10 - DISPARO LATA ANIMACIÓN COMPLEJA (Rubén)
+// 3.10 - DISPARO LATA (Rubén)
 // ==========================================
-bool disparoActivo = false; // La activamos por defecto para que sea cíclica
+// VARIABLES DE ESTADO (Cambian continuamente en la animación)
+// ==========================================================
+bool disparoActivo = false;
 float tiempoSalto = 0.0f;
 float lataPosZ = 0.0f;
-float lataPosY = 4.8f;
+float lataPosY = 0.0f;
 float rotLata = 0.0f;
-
-// Constantes de reinicio
-const float VEL_SALTO_ORIGINAL = 10.0f;
-const float ALTURA_ORIGINAL = 4.8f;
-
-float velocidadSaltoActual = VEL_SALTO_ORIGINAL;
-float alturaBaseActual = ALTURA_ORIGINAL;
 int rebotesContados = 0;
+float alturaBaseActual = 4.8f;
+float velocidadSaltoActual = 10.0f;
+//  CONSTANTES DE CONFIGURACIÓN (Ajustes fijos del mundo)
+float VEL_SALTO_ORIGINAL = 10.0f;
+float ALTURA_ORIGINAL = 4.8f;
+float velocidadHorizontalBase = 5.0f;
+// VARIABLES AUXILIARES DE CÁLCULO
+float factorGiro = 0.0f;
+float semillaAleatoria = 0.0f;
+float factorRestitucion = 0.0f;
+float dispersionGiro = 0.0f;
+
+// ==========================================
+// 3.11 - POROS SALTANDO (Evelyn)
+// ==========================================
+// TInicio desfasados
+float temporizadoresPoros[5] = { 0.0f, 72.0f, 144.0f, 36.0f, 90.0f };
+float alturasPoros[5] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+float duracionSubidaPoro = 40.0f;	// Subida rápida
+float duracionBajadaPoro = 60.0f;	// Bajada lenta
+float duracionTotalPoro = 100.0f;	// Ciclo total
+float alturaMaximaPoro = 1.5f;		// Altura máxima en Y
+// Variables temporales de trabajo
+int pIter;
+float progresoPoro;
+
+// ==========================================
+// 3.12 - CAMBIO DE HOJA (Evelyn)
+// ==========================================
+float rotacionPagina = 0.0f;
+float velocidadPagina = 01.0f; // Velocidad del pase de página (grados por segundo)
+
+// ==========================================
+// 3.13 - ESTO ES LITERATURA (Evelyn)
+// ==========================================
+float temporizadorLiteratura = 0.0f;
+float litPosZ = -36.35f;
+float litEscalaX = 0.0f;
+float litEscalaY = 0.0f;
+float litEscalaZ = 0.0f;
+// Tiempos (La etapa 2 dura exactamente el doble)
+float litDuracionE1 = 100.0f;	// Nace y avanza
+float litDuracionE2 = 200.0f;	// Se mantiene y avanza
+float litDuracionE3 = 100.0f;	// Se encoge y desaparece
+float litDuracionTotal = 400.0f;// 100 + 200 + 100
+float progresoLit;
+
+
+// ==========================================
+//  3.14 - SONIDO (Rubén)
+// ==========================================
+//  3.14.1 - APUNTADORES PARA LOS TRACKS DE AUDIO
+ISound* musicaFondo = nullptr;
+ISound* ruidoAmbiente = nullptr;
+ISound* hollow = nullptr;
+ISound* ziggs = nullptr;
+ISound* miku = nullptr;
+ISound* smiling = nullptr;
+ISound* disparo = nullptr;
+ISound* arbol = nullptr;
+//  3.14.2 - CONFIGURACIÓN DE POSICIONES Y UMBRALES (Constantes de mapa)
+glm::vec3 posHollow = glm::vec3(120.0f, 0.0f, -50.0f);
+glm::vec3 posZiggs = glm::vec3(-111.0, 0.0f, -50.0f);
+glm::vec3 posSmiling = glm::vec3(121.5f, 0.0f, 60.0f);
+glm::vec3 posMiku = glm::vec3(-120.0f, 0.0f, 40.0f);
+glm::vec3 posArbol = glm::vec3(195.0f, 0.0f, 95.0f);
+float umbralSonido = 30.0f;
+//  3.14.3 - VARIABLES DINÁMICAS DE CÓMPUTO (Espacio de memoria único)
+glm::vec3 camPos = glm::vec3(0.0f);
+glm::vec3 camDir = glm::vec3(0.0f);
+float distanciaHollow = 0.0f;
+float distanciaZiggs = 0.0f;
+float distanciaMiku = 0.0f;
+float distanciaSmiling = 0.0f;
+float distanciaArbol = 0.0f;
+
+
 
 
 
@@ -261,9 +337,9 @@ Model LOL_12, LOL_13, LOL_14, LOL_15;	// XAYAH - ANNIE - TRISTANA - SEJUANI
 // --- DECORACIÓN 2
 Model LOL_03, LOL_06, LOL_07, LOL_08;	// TORRETA - WARD - MAESTRÍA - MAZO JAYCE
 Model LOL_09, LOL_10, LOL_11, LOL_16;	// AHRI - BASE - LUMINARIA - MAZO POPPY
-Model M35_1, M35_2;								// RELOJ?
+Model M35_1, M35_2, M36_1, M36_2;		// RELOJ?
 Texture texturaHumo, texturaPoro;		// HUMO - PORO BLUSH
-
+Texture texturaLiteratura;				// Esto es literatura
 // ==========================================
 // 4.2 - TEXTURAS Y MODELOS (Juan Pablo)
 // ==========================================
@@ -317,6 +393,12 @@ Model Cuckoo1;
 Model Cuckoo2;
 Model Cuckoo3;
 Model Cuckoo4;
+Model Globo;
+Model Library;
+Model Library2;
+Model Library3;
+Model Library4;
+Model LibraryE;
 
 // ==========================================
 // 4.4 - TEXTURAS Y MODELOS (Ruben)
@@ -326,7 +408,8 @@ Model DJSpit_Basura_M;
 Model DJSpit_Escenario_M;
 Model DJSpit_Oficina_M;
 Model DJSpit_Lata_M;
-void inputKeyframes(bool* keys);
+Model Lampara_Ruben_M;
+
 
 
 
@@ -612,13 +695,58 @@ int main()
 {
 
 	// =========================================================
-	// --- 7.1. Inicialización de Ventana y Cámara ---
+	// --- 7.1. Inicialización de Ventana y Cámara y Sonido ---
 	// =========================================================
 	mainWindow = Window(1800, 900); // 1280, 1024 or 1024, 768
 	mainWindow.Initialise();
 	CreateObjects();
 	CreateShaders();
 	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -60.0f, 0.0f, 0.5f, 0.5f);
+	if (SoundEngine) {
+		ruidoAmbiente = SoundEngine->play2D("Sounds/ruido.mp3", true, false, true);
+		musicaFondo = SoundEngine->play2D("Sounds/inventor.mp3", true, false, true);
+		if (ruidoAmbiente) {
+			ruidoAmbiente->setVolume(0.04f);
+		}
+		if (musicaFondo) {
+			musicaFondo->setVolume(0.04f);
+		}
+		// Audio 1: En la oficina (Ej. Coordenadas 0, 0, 0)
+		hollow = SoundEngine->play3D("Sounds/hollow.mp3", vec3df(120.0f, 0.0f, -50.0f), true);
+		// Audio 2: Junto al tambo / la lata (Ej. Cerca de la base Y=4.8)
+		ziggs = SoundEngine->play3D("Sounds/ziggs.mp3", vec3df(-111.0, 0.0f, -50.0f), true);
+		// Audio 3: En la vía del tren largo (Ej. Usando tus coordenadas del mesh de fondo)
+		smiling = SoundEngine->play3D("Sounds/smiling.mp3", vec3df(121.5f, 0.0f, 60.0f), true);
+		// Audio 4: En los Poros Corazones (Ej. Coordenadas de tu mesh de la texturaPoro)
+		miku = SoundEngine->play3D("Sounds/miku.mp3", vec3df(-120.0f, 0.0f, 40.0f), true);
+		if (hollow) {
+			hollow->setMinDistance(10.0f);
+			hollow->setMaxDistance(20.0f);
+		}
+		if (ziggs) {
+			ziggs->setVolume(0.4f);
+			ziggs->setMinDistance(10.0f);
+			ziggs->setMaxDistance(20.0f);
+		}
+		if (smiling) {
+			smiling->setMinDistance(10.0f);
+			smiling->setMaxDistance(20.0f);
+		}
+		if (miku) {
+			miku->setVolume(0.2f);
+			miku->setMinDistance(10.0f);
+			miku->setMaxDistance(20.0f);
+		}
+		if (disparo) {
+			disparo->setMinDistance(20.0f);
+			disparo->setMaxDistance(40.0f);
+		}
+		if (arbol) {
+			arbol->setMinDistance(80.0f);
+			arbol->setMaxDistance(100.0f);
+		}
+	}
+
 
 
 	// =========================================================
@@ -660,6 +788,8 @@ int main()
 	M34 = Model();				M34.LoadModel("Models/34.obj");
 	M35_1 = Model();			M35_1.LoadModel("Models/35_1.obj");
 	M35_2 = Model();			M35_2.LoadModel("Models/35_2.obj");
+	M36_1 = Model();			M36_1.LoadModel("Models/36_1.obj");
+	M36_2 = Model();			M36_2.LoadModel("Models/36_2.obj");
 	LOL_00 = Model();			LOL_00.LoadModel("Models/LOL_00.obj");
 	LOL_01 = Model();			LOL_01.LoadModel("Models/LOL_01.obj");
 	LOL_02 = Model();			LOL_02.LoadModel("Models/LOL_02.obj");
@@ -677,8 +807,9 @@ int main()
 	LOL_14 = Model();			LOL_14.LoadModel("Models/LOL_14.obj");
 	LOL_15 = Model();			LOL_15.LoadModel("Models/LOL_15.obj");
 	LOL_16 = Model();			LOL_16.LoadModel("Models/LOL_16.obj");
-	texturaHumo = Texture("Textures/HUMO.tga");		texturaHumo.LoadTextureA();
-	texturaPoro = Texture("Textures/35_1.png");	texturaPoro.LoadTextureA();
+	texturaHumo = Texture("Textures/HUMO.tga");				texturaHumo.LoadTextureA();
+	texturaPoro = Texture("Textures/35_1.png");				texturaPoro.LoadTextureA();
+	texturaLiteratura = Texture("Textures/Literatura.png");	texturaLiteratura.LoadTextureA();
 
 	// -----------------------> 7.2.2 - Juan Pablo
 	hw_cuerpo = Model();			hw_cuerpo.LoadModel("Models/hw_cuerpo.obj");
@@ -722,6 +853,14 @@ int main()
 	Cuckoo2 = Model(); Cuckoo2.LoadModel("Models/Cuckoo2.obj");
 	Cuckoo3 = Model(); Cuckoo3.LoadModel("Models/Cuckoo3.obj");
 	Cuckoo4 = Model(); Cuckoo4.LoadModel("Models/Cuckoo4.obj");
+	Globo = Model(); Globo.LoadModel("Models/Globo.obj");
+	Library = Model(); Library.LoadModel("Models/Library.obj");
+	Library2 = Model(); Library2.LoadModel("Models/Library2.obj");
+	Library3 = Model(); Library3.LoadModel("Models/Library3.obj");
+	Library4 = Model(); Library4.LoadModel("Models/Library4.obj");
+	LibraryE = Model(); LibraryE.LoadModel("Models/LibraryE.obj");
+
+
 
 	// -----------------------> 7.2.4 - Ruben
 	DJSpit_Paredes_M = Model();			DJSpit_Paredes_M.LoadModel("Models/djspit-paredes.obj");
@@ -729,6 +868,7 @@ int main()
 	DJSpit_Escenario_M = Model();		DJSpit_Escenario_M.LoadModel("Models/djspit-escenario.obj");
 	DJSpit_Oficina_M = Model();			DJSpit_Oficina_M.LoadModel("Models/smiling-oficina.obj");
 	DJSpit_Lata_M = Model();			DJSpit_Lata_M.LoadModel("Models/djspit-lata.obj");
+	Lampara_Ruben_M = Model();			Lampara_Ruben_M.LoadModel("Models/puerta.obj");
 
 
 
@@ -1099,30 +1239,29 @@ int main()
 		}
 
 
-
-
-		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-		// ----- 8.1.4-5: LÓGICA DE ANIMACION B3 - Esfera y Árbol (Ruben)
-		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-		// 1. Calcular el tiempo transcurrido (ya tienes deltaTime en tu código)
-		tiempoSerpenteo += deltaTime;
-
-
+	// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	// ----- 8.1.4-5: LÓGICA DE ANIMACION - Esfera y Árbol (Ruben)
+	// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	//Reset de animación
+		if (mainWindow.getAccionE()) {
+			movEsferaX = 0.0f;
+			movEsferaZ = 0.0f;
+			rotEsferaY = 0.0f;
+			rotEsferaZ = 0.0f;
+			rotArbol = 0.0f;
+			arbol_cayendo = false;
+			mainWindow.apagarAccionE();
+		}
 		if (movEsferaX < puntoDestinoX) {
-			// 2. Definir el avance y el serpenteo
-			// El valor '5.0f' controla la amplitud (qué tanto se mueve a los lados)
-			// El valor '0.5f' controla la frecuencia (qué tan rápido serpentea)
+			//Avance y movimiento de serpenteo
 			movEsferaX += velocidadAvance * deltaTime;
 			movEsferaZ = 4.0f * sin(movEsferaX * 0.1f);
-
-			// 3. Rotación sobre su propio eje (similar a la rotllanta de tu ejemplo)
+			//Rotación sobre su propio eje
 			rotEsferaZ -= 10.0f * deltaTime;
 			rotEsferaY = 10.0f * sin(movEsferaX * 0.1f);
 		}
 		else {
 			if (rotArbol < anguloCaida) {
-
 				if (rotArbol < 15.0f) {
 					velocidadCaida = 0.1f;
 				}
@@ -1130,15 +1269,16 @@ int main()
 					velocidadCaida = 0.5f;
 				}
 				rotArbol += velocidadCaida * deltaTime;
-
 			}
-
-			// Opcional: Forzar la posición exacta al llegar para evitar desfases
+			if (!arbol_cayendo) {
+				if (SoundEngine) {
+					SoundEngine->play3D("Sounds/arbol.mp3", vec3df(195.0f, 0.0f, 95.0f), false);
+				}
+				arbol_cayendo = true;
+			}
+			//Forzar la posición exacta al llegar para evitar desfases en la animación
 			movEsferaX = puntoDestinoX;
 		}
-
-
-
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1172,43 +1312,141 @@ int main()
 		if (escalaHumoAnimada < 0.0f) escalaHumoAnimada = 0.0f;
 
 
-
-
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		// ----- 8.1.7: LÓGICA DE ANIMACION A3 - Disparo (Ruben)
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
+		if (mainWindow.getAccionT()) {
+			disparoActivo = true;
+			if (SoundEngine) {
+				SoundEngine->play3D("Sounds/disparo.mp3", vec3df(121.5f, 0.0f, 60.0f), false);
+			}
+			mainWindow.apagarAccionT();
+		}
+		if (mainWindow.getAccionR()) {
+			lataPosZ = 0.0f;
+			alturaBaseActual = ALTURA_ORIGINAL;
+			lataPosY = alturaBaseActual;
+			rotLata = 0.0f;
+			tiempoSalto = 0.0f;
+			rebotesContados = 0;
+			velocidadSaltoActual = VEL_SALTO_ORIGINAL; // Restaura la fuerza del salto original
+			mainWindow.apagarAccionR();
+		}
 		if (disparoActivo) {
-			tiempoSalto += deltaTime;
-			rotLata += 200.0f * deltaTime;
-			lataPosZ += 4.0f * deltaTime;
-
-			// Fórmula de trayectoria
-			lataPosY = alturaBaseActual + (velocidadSaltoActual * tiempoSalto) - (0.5f * 9.8f * tiempoSalto * tiempoSalto);
-
-			// Detección de Rebote
-			if (lataPosY <= 0.0f && rebotesContados < 3) {
+			tiempoSalto += deltaTime * 0.05f;
+			velocidadHorizontalBase = 5.0f;
+			factorGiro = (rebotesContados == 0) ? 500.0f : 180.0f;
+			rotLata += factorGiro * deltaTime;
+			if (rebotesContados == 0) {
+				// --- PARÁBOLA 1 (Desde el tambo al suelo) ---
+				lataPosZ = 0.0f + (velocidadHorizontalBase * tiempoSalto);
+				lataPosY = alturaBaseActual + (velocidadSaltoActual * tiempoSalto) - (0.5f * 9.81f * tiempoSalto * tiempoSalto);
+			}
+			else {
+				// --- PARÁBOLA 2 ---
+				lataPosZ += 0.5 * deltaTime;
+				// Ecuación del rebote desde el suelo
+				lataPosY = 0.0f + (velocidadSaltoActual * tiempoSalto) - (0.5f * 9.81f * tiempoSalto * tiempoSalto);
+			}
+			// Detección de cuando la lata llega al suelo, aún no ha rebotado y se verifica
+			// que el tiempo haya avanzado para que no se cicle de forma infinita en 0
+			if (lataPosY <= 0.0f && rebotesContados < 1 && tiempoSalto > 0.05f) {
 				lataPosY = 0.0f;
 				tiempoSalto = 0.0f;
-				velocidadSaltoActual *= 0.6f; // Elasticidad
-				alturaBaseActual = 0.0f;      // Después del primer bote, sale del suelo
+				alturaBaseActual = 0.0f;
 				rebotesContados++;
-
-				// Sonido de rebote
-				//if (SoundEngine) SoundEngine->play3D("Sounds/clink.wav", vec3df(lataPosZ, 0, 0));
+				semillaAleatoria = static_cast<float>(rand() % 100) / 100.0f;
+				// Reducimos la fuerza del segundo salto de forma aleatoria (entre 50% y 70% con tus nuevos valores)
+				factorRestitucion = 0.50f + (semillaAleatoria * 0.20f);
+				velocidadSaltoActual *= factorRestitucion;
+				// Un poco de ruido para que la lata no siempre caiga en el mismo lugar
+				dispersionGiro = sinf(semillaAleatoria * 3.1416f) * 1.5f;
+				lataPosZ += dispersionGiro;
 			}
-
-			// --- BLOQUE DE REINICIO CÍCLICO ---
-			// Si ya rebotó 3 veces y está en el suelo o se alejó mucho
-			if (rebotesContados >= 3 && lataPosY <= 0.0f) {
+			// Forzar la posición final en Y de la lata
+			if (rebotesContados >= 1 && lataPosY <= 0.0f && tiempoSalto > 0.1f) {
 				lataPosY = 0.0f;
-				disparoActivo = false;
-
-				// Opcional: Sonido de "respawn" o recarga
-				//if (SoundEngine) SoundEngine->play2D("Sounds/reload.wav");
+				disparoActivo = false; // Termina la animación por completo
 			}
 		}
 
+
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		// ----- 8.1.8: LÓGICA DE ANIMACION POROS SALTANDO (Evelyn)
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		for (pIter = 0; pIter < 5; pIter++) {
+			temporizadoresPoros[pIter] += deltaTime;
+			// Reinicio del ciclo (reteniendo los milisegundos extra para precisión)
+			if (temporizadoresPoros[pIter] >= duracionTotalPoro) {
+				temporizadoresPoros[pIter] -= duracionTotalPoro;
+			}
+			// ETAPA 1: Salto hacia arriba
+			if (temporizadoresPoros[pIter] <= duracionSubidaPoro) {
+				progresoPoro = temporizadoresPoros[pIter] / duracionSubidaPoro;
+				if (progresoPoro > 1.0f) progresoPoro = 1.0f; // Blindaje del progreso
+				alturasPoros[pIter] = alturaMaximaPoro * sin(progresoPoro * 1.570796f);
+			}
+			// ETAPA 2: Caída hacia abajo (Ease-In)
+			else {
+				progresoPoro = (temporizadoresPoros[pIter] - duracionSubidaPoro) / duracionBajadaPoro;
+				if (progresoPoro > 1.0f) progresoPoro = 1.0f; // Blindaje del progreso
+				alturasPoros[pIter] = alturaMaximaPoro * cos(progresoPoro * 1.570796f);
+			}
+			// Forzado a no sobrepasar el suelo
+			if (alturasPoros[pIter] < 0.0f) {
+				alturasPoros[pIter] = 0.0f;
+			}
+		}
+
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		// ----- 8.1.9: LÓGICA DE ANIMACION - PÁGINA DEL LIBRO (Evelyn)
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		rotacionPagina += velocidadPagina * deltaTime;
+		// Bucle 360 grados
+		if (rotacionPagina >= 360.0f) {
+			rotacionPagina -= 360.0f;
+		}
+		
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		// ----- 8.1.10: LÓGICA DE ANIMACION - LITERATURA (Evelyn)
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		temporizadorLiteratura += deltaTime;
+		if (temporizadorLiteratura >= litDuracionTotal) {
+			temporizadorLiteratura -= litDuracionTotal;
+		}
+		// --- ETAPA 1: Nace (Escala 0 a normal) y avanza de -36.35 a -33.85 ---
+		if (temporizadorLiteratura <= litDuracionE1) {
+			progresoLit = temporizadorLiteratura / litDuracionE1;
+			if (progresoLit > 1.0f) progresoLit = 1.0f;
+			// SUMAMOS 2.5f para acercarnos al origen
+			litPosZ = -36.35f + (2.5f * progresoLit);
+			// Crece de 0 hasta tu escala original (3.5, 3.5, 2.0)
+			litEscalaX = 3.5f * progresoLit;
+			litEscalaY = 3.5f * progresoLit;
+			litEscalaZ = 2.0f * progresoLit;
+		}
+		// --- ETAPA 2: Mantiene escala normal y avanza de -33.85 a -31.85 ---
+		else if (temporizadorLiteratura <= (litDuracionE1 + litDuracionE2)) {
+			progresoLit = (temporizadorLiteratura - litDuracionE1) / litDuracionE2;
+			if (progresoLit > 1.0f) progresoLit = 1.0f;
+			// Partimos de -33.85 y SUMAMOS 2.0f para acercarnos más
+			litPosZ = -33.85f + (2.0f * progresoLit);
+			// Se mantiene en su tamaño máximo
+			litEscalaX = 3.5f;
+			litEscalaY = 3.5f;
+			litEscalaZ = 2.0f;
+		}
+		// --- ETAPA 3: Se encoge a 0 y avanza de -31.85 a -30.35 ---
+		else {
+			progresoLit = (temporizadorLiteratura - litDuracionE1 - litDuracionE2) / litDuracionE3;
+			if (progresoLit > 1.0f) progresoLit = 1.0f;
+			// Partimos de -31.85 y SUMAMOS 1.5f para llegar al punto final más cercano (-30.35)
+			litPosZ = -31.85f + (1.5f * progresoLit);
+			// Se encoge desde el máximo hasta 0
+			litEscalaX = 3.5f - (3.5f * progresoLit);
+			litEscalaY = 3.5f - (3.5f * progresoLit);
+			litEscalaZ = 2.0f - (2.0f * progresoLit);
+		}
 
 
 
@@ -1420,11 +1658,12 @@ int main()
 		model = glm::scale(model, glm::vec3(2.0f, 3.5f, 2.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		hw_poste.RenderModel();
-		// Poste 3 (Coordenada: 84, 0, 84) - Modelo 
+		// Poste 3 (Coordenada: 84, 0, 84) - Modelo Lampara_Ruben_M
 		model = glm::mat4(1.0);
 		model = glm::translate(model, posicionesPostes[2]);
+		model = glm::scale(model, glm::vec3(0.15f, 0.15f, 0.15f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		//LOL_12.RenderModel();
+		Lampara_Ruben_M.RenderModel();
 		// Poste 4 (Coordenada: -86, 0, 84) - Modelo lamparaTony
 		model = glm::mat4(1.0);
 		model = glm::translate(model, posicionesPostes[3]);
@@ -1435,11 +1674,12 @@ int main()
 		model = glm::translate(model, posicionesPostes[4]);
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_12.RenderModel();
-		// Poste 6 (Coordenada: 84, 0, 0) - Modelo 
+		// Poste 6 (Coordenada: 84, 0, 0) - Modelo Lampara_Ruben_M
 		model = glm::mat4(1.0);
 		model = glm::translate(model, posicionesPostes[5]);
+		model = glm::scale(model, glm::vec3(0.15f, 0.15f, 0.15f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		//LOL_12.RenderModel();
+		Lampara_Ruben_M.RenderModel();
 		// Poste 7 (Coordenada: 0, 0, 75) - Modelo lamparaTony
 		model = glm::mat4(1.0);
 		model = glm::translate(model, posicionesPostes[6]);
@@ -1722,6 +1962,7 @@ int main()
 		model = glm::translate(model, glm::vec3(86.96f, 0.0f, -51.81f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		M19.RenderModel();
+		/*
 		model = glm::mat4(1.0);
 		model = glm::translate(model, glm::vec3(88.41f, 0.0f, 22.38f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -1730,6 +1971,7 @@ int main()
 		model = glm::translate(model, glm::vec3(88.41f, 0.0f, 40.21f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		M19.RenderModel();
+		*/
 		model = glm::mat4(1.0);
 		model = glm::translate(model, glm::vec3(-88.05f, 0.0f, 69.43f));
 		model = glm::rotate(model, 180 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -1926,7 +2168,6 @@ int main()
 		model = glm::translate(model, glm::vec3(-200.0f, 0.0f, -20.0f));
 		model = glm::rotate(model, 312 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-
 		// Usamos la misma condición de las luces puntuales (0=Amanecer, 5=Atardecer, 6 y 7=Noche)
 		if (indiceSkyboxActual == 0 || indiceSkyboxActual == 5 ||
 			indiceSkyboxActual == 6 || indiceSkyboxActual == 7)
@@ -1962,31 +2203,60 @@ int main()
 		model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_01.RenderModel();
-		// Poros Ahri -------------
-		model = glm::mat4(1.0);
-		model = glm::translate(glm::mat4(1.0), glm::vec3(-135.0f, 0.0f, -49.0f));
+		// === Libro que esta leyendo el poro===
+		// 1. Libro Base (M36_1) - Estático
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-51.8f, 1.5f, -33.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		M36_1.RenderModel();
+		// 2. Página Animada (M36_2)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-51.8f, 1.5f, -33.0f));
+		model = glm::rotate(model, rotacionPagina * toRadians, glm::vec3(-1.0f, 0.0f, 0.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		M36_2.RenderModel();
+		// === PLANO DE LITERATURA ANIMADO ===
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-49.56f, 5.0f, litPosZ));
+		model = glm::rotate(model, -90.0f * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::rotate(model, 90.0f * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(litEscalaX, litEscalaY, litEscalaZ));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		texturaLiteratura.UseTexture();
+		Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		meshList[5]->RenderMesh();
+
+		// === POROS AHRI (MULTITUD EN CONCIERTO) ===
+		// Poro 1 (Índice 0)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-135.0f, alturasPoros[0], -49.0f));
 		model = glm::rotate(model, -25 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_01.RenderModel();
-		model = glm::mat4(1.0);
-		model = glm::translate(glm::mat4(1.0), glm::vec3(-132.0f, 0.0f, -50.0f));
+		// Poro 2 (Índice 1)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-132.0f, alturasPoros[1], -50.0f));
 		model = glm::rotate(model, -15 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_01.RenderModel();
-		model = glm::mat4(1.0);
-		model = glm::translate(glm::mat4(1.0), glm::vec3(-134.0f, 0.0f, -52.0f));
+		// Poro 3 (Índice 2)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-134.0f, alturasPoros[2], -52.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_01.RenderModel();
-		model = glm::mat4(1.0);
-		model = glm::translate(glm::mat4(1.0), glm::vec3(-132.0f, 0.0f, -54.0f));
+		// Poro 4 (Índice 3)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-132.0f, alturasPoros[3], -54.0f));
 		model = glm::rotate(model, 15 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_01.RenderModel();
-		model = glm::mat4(1.0);
-		model = glm::translate(glm::mat4(1.0), glm::vec3(-135.0f, 0.0f, -55.0f));
+		// Poro 5 (Índice 4)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-135.0f, alturasPoros[4], -55.0f));
 		model = glm::rotate(model, 25 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		LOL_01.RenderModel();
+
 		// Anivia (LOL_02)
 		model = glm::mat4(1.0);
 		model = glm::translate(glm::mat4(1.0), glm::vec3(-26.0f, 22.0f, -42.0f));
@@ -2506,55 +2776,70 @@ int main()
 		model = glm::translate(model, glm::vec3(10.0f, 0.0f, -15.0f)); // posición en la escena
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		Teto.RenderModel();
-
+		model = modelaux;
+		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 40.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		Library3.RenderModel();
+		//elementos literarios escenario 
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(25.0f, 0.0f, 30.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		Globo.RenderModel();
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(55.0f, 0.0f, -65.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		Library.RenderModel();
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(25.0f, 0.0f, 40.0f));
+		model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		Library2.RenderModel();
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(40.0f, 0.0f, 40.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		Library4.RenderModel();
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(43.0f, 0.0f, 27.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		LibraryE.RenderModel();
 
 		
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>> TEXTURAS Y MODELOS - RUBEN >>>>>>>>>>>>>>>>>>>>>>>>>>
-
 		//DJ Spit - Bordes escenario
 		model = glm::mat4(1.0);
 		model = glm::translate(model, glm::vec3(114.5f, 0.0f, 49.5f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		//Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		DJSpit_Paredes_M.RenderModel();
-
 		//DJ Spit - Escenario principal
 		model = glm::mat4(1.0);
 		model = glm::translate(model, glm::vec3(114.5f, 0.0f, 49.5f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		//Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		DJSpit_Escenario_M.RenderModel();
-
 		//DJ Spit - Basura
 		model = glm::mat4(1.0);
 		model = glm::translate(model, glm::vec3(114.5f, 0.0f, 49.5f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		//Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		DJSpit_Basura_M.RenderModel();
-
-		//DJ Spit
+		//DJ Spit - Lata
 		model = glm::mat4(1.0);//119.5f, 0.0f, 46.5f     model = glm::translate(model, glm::vec3(-12.6f, lataPosY, -3.0f + lataPosZ));
 		model = glm::translate(model, glm::vec3(121.5f, lataPosY, 49.0f + lataPosZ));
-		//model = glm::scale(model, glm::vec3(30.0f, 30.0f, 30.0f));
 		model = glm::rotate(model, rotLata * toRadians, glm::vec3(1.0f, 0.5f, 0.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		DJSpit_Lata_M.RenderModel();
-
 		///////////////////////////Para la animación de la esfera///////////////////////////////
 		model = glm::mat4(1.0f);
 		//model = glm::scale(model, glm::vec3(0.45f, 0.45f, 0.45f));
 		model = glm::translate(model, glm::vec3(-250.0f + movEsferaX, 10.0f, 95.0f + movEsferaZ));
 		model = glm::rotate(model, rotEsferaZ * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
 		model = glm::rotate(model, rotEsferaY * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-
 		Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
-
 		DJSpit_Oficina_M.RenderModel();
 		////////////////////////////////////////////////////////////////////////////////////////
-
 		//Pino caído
 		model = glm::mat4(1.0);
 		model = glm::translate(model, glm::vec3(195.0f, 0.0f, 95.0f));
@@ -2562,6 +2847,53 @@ int main()
 		model = glm::rotate(model, -rotArbol * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		M26.RenderModel();
+
+		// ===============================================================================
+		// --- 8.7: UBICAR AL OYENTE Y ALTERNAR NIVELES DE VOLUMEN
+		// ===============================================================================
+		if (SoundEngine) {
+			// Obtenemos posición y dirección de tu clase Camera
+			camPos = camera.getCameraPosition();
+			camDir = camera.getCameraDirection();
+			SoundEngine->setListenerPosition(
+				vec3df(camPos.x, camPos.y, camPos.z), // Posición
+				vec3df(camDir.x, camDir.y, camDir.z)  // Hacia dónde mira
+			);
+			// 2. Calculamos las distancias geométricas sobre las variables existentes
+			distanciaHollow = glm::distance(camPos, posHollow);
+			distanciaZiggs = glm::distance(camPos, posZiggs);
+			distanciaMiku = glm::distance(camPos, posMiku);
+			distanciaSmiling = glm::distance(camPos, posSmiling);
+			distanciaArbol = glm::distance(camPos, posArbol);
+			// 3. Máquina de estados de proximidad para el volumen
+			if (distanciaHollow < umbralSonido || distanciaZiggs < umbralSonido || distanciaMiku < umbralSonido || distanciaSmiling < umbralSonido) {
+				// Jugador cerca de un emisor 3D: Atenuamos la música ambiental 2D
+				if (ruidoAmbiente) {
+					ruidoAmbiente->setVolume(0.05f);
+				}
+				if (musicaFondo) {
+					musicaFondo->setVolume(0.03f);
+				}
+			}
+			else {
+				// Jugador en zona neutral: La música 2D vuelve a su nivel normal
+				if (ruidoAmbiente) {
+					ruidoAmbiente->setVolume(0.09f);
+				}
+				if (musicaFondo) {
+					musicaFondo->setVolume(0.07f);
+				}
+			}
+			if (distanciaArbol < 60.0f && movEsferaX > 375.0f) {
+				// Jugador observando de cerca la esfera a punto de chocar con el árbol: Atenuamos la música ambiental 2D
+				if (ruidoAmbiente) {
+					ruidoAmbiente->setVolume(0.05f);
+				}
+				if (musicaFondo) {
+					musicaFondo->setVolume(0.03f);
+				}
+			}
+		}
 
 
 
@@ -2612,22 +2944,3 @@ int main()
 	return 0;
 }
 
-
-void inputKeyframes(bool* keys)
-{
-	if (keys[GLFW_KEY_R]) { // Presionar R para reiniciar la lata
-		// Reset de posición
-		lataPosZ = 0.0f;
-		lataPosY = ALTURA_ORIGINAL;
-		alturaBaseActual = ALTURA_ORIGINAL;
-		rotLata = 0.0f;
-
-		// Reset de física
-		tiempoSalto = 0.0f;
-		velocidadSaltoActual = VEL_SALTO_ORIGINAL;
-		rebotesContados = 0;
-	}
-	if (keys[GLFW_KEY_T]) { // Presionar R para reiniciar la lata
-		disparoActivo = true;
-	}
-}

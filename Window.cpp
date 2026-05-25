@@ -156,6 +156,17 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 	}
 
 	// ====================================================================================
+	// 4. CONTROLES DE ANIMACIONES (ESFERA Y DISPARO)
+	// ====================================================================================
+
+	if (action == GLFW_PRESS)
+	{
+		if (key == GLFW_KEY_E) theWindow->accionE = true;
+		if (key == GLFW_KEY_R) theWindow->accionR = true;
+		if (key == GLFW_KEY_T) theWindow->accionT = true;
+	}
+
+	// ====================================================================================
 	// 5. ANIMACION LOCOMOTORAS (Tecla B)
 	// ====================================================================================
 	// [B]: Gatillo para la máquina de estados de los trenes (Ciclo 0-1-2-3-4)

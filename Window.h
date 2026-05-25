@@ -28,6 +28,16 @@ public:
 
 	bool* getStatusLucesSpot() { return statusLucesSpot; }
 	int getContadorTeclaB() { return contadorTeclaB; }
+
+	bool getAccionE() { return accionE; }
+	void apagarAccionE() { accionE = false; }
+
+	bool getAccionR() { return accionR; }
+	void apagarAccionR() { accionR = false; }
+
+	bool getAccionT() { return accionT; }
+	void apagarAccionT() { accionT = false; }
+
 	// ====================================================================================
 	
 	bool getShouldClose() { return  glfwWindowShouldClose(mainWindow); }
@@ -53,6 +63,9 @@ private:
 	bool accionJ;
 	bool statusLucesSpot[8];	// Estado de las 8 luces
 	int contadorTeclaB;			// Animación 2 (Avance locomotoras)
+	bool accionE;
+	bool accionR;
+	bool accionT;
 	// ====================================================================================
 	
 	
